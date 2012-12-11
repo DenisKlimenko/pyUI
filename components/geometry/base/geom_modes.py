@@ -361,64 +361,20 @@ class GeometryEditMode(BaseEditMode):
 
         if key == ois.KC_V:
             selected = self._logic._getSheet().getSelected()
-            if len(selected) == 1:
-                obj = selected[0]
+            for obj in selected:
                 if isinstance(obj, (GeometryTriangle)):
 
-                    triangleSides = obj.getSides()
-
-                    # calculate triangle vertex coordinates
-                    pointA_x = render_engine.pos3dTo2dWindow(triangleSides[0].getEnd().getPosition())[0]
-                    pointA_y = render_engine.pos3dTo2dWindow(triangleSides[0].getEnd().getPosition())[1]
-                    pointB_x = render_engine.pos3dTo2dWindow(triangleSides[1].getEnd().getPosition())[0]
-                    pointB_y = render_engine.pos3dTo2dWindow(triangleSides[1].getEnd().getPosition())[1]
-                    pointC_x = render_engine.pos3dTo2dWindow(triangleSides[2].getEnd().getPosition())[0]
-                    pointC_y = render_engine.pos3dTo2dWindow(triangleSides[2].getEnd().getPosition())[1]
-
-                    # calculate triangle sides length
-                    sideA_length = math.sqrt(math.pow(pointC_x - pointB_x, 2) + math.pow(pointC_y - pointB_y, 2))
-                    sideB_length = math.sqrt(math.pow(pointA_x - pointC_x, 2) + math.pow(pointA_y - pointC_y, 2))
-                    sideC_length = math.sqrt(math.pow(pointA_x - pointB_x, 2) + math.pow(pointA_y - pointB_y, 2))
-
-                    # calculate incenter coordinates
-                    # formula: X = (BC * Xa + AC * Xb + AB * Xc) / (AB + BC + AC)
-                    #          Y = (BC * Ya + AC * Yb + AB * Yc) / (AB + BC + AC)
-                    # where X, Y        - incenter coordinates
-                    #       AB, BC, AC  - triangle sides
-                    #       Xa, Xb, Xc  - triangle A, B, C vertexes X coordinates
-                    #       Ya, Yb, Yc  - triangle A, B, C vertexes Y coordinates
-                    incenter_x = (sideA_length * pointA_x + sideB_length * pointB_x + sideC_length * pointC_x) / (sideA_length + sideB_length + sideC_length)
-                    incenter_y = (sideA_length * pointA_y + sideB_length * pointB_y + sideC_length * pointC_y) / (sideA_length + sideB_length + sideC_length)
-
-                    # calculate half perimeter
-                    halfPerimeter = (sideA_length + sideB_length + sideC_length) / 2
-
-                    # calculate incircle radius
-                    # formula r = ((p - a)*(p - b)*(p - c) / p) ^ 1/2
-                    # where r       - radius
-                    #       p       - half perimeter
-                    #       a, b, c - triangle sides
-                    radius = math.sqrt((halfPerimeter - sideA_length) * (halfPerimeter - sideB_length) * (halfPerimeter * sideC_length) / halfPerimeter)
-
-                    # calculate tangent point coordinates (on AC triangle side)
-                    # formula X = (Xa - Xc) * (p - AB) / AC + Xc
-                    #         Y = (Ya - Yc) * (p - AB) / AC + Yc
-                    # where X, Y    - tangent point coordinates
-                    #       Xa, Xc  - triangle A, C vertexes X coordinates
-                    #       Ya, Yc  - triangle A, C vertexes Y coordinates
-                    #       p       - half perimeter
-                    tangentPoint_x = (pointA_x - pointC_x) * (halfPerimeter - sideC_length) / sideB_length + pointC_x
-                    tangentPoint_y = (pointA_y - pointC_y) * (halfPerimeter - sideC_length) / sideB_length + pointC_y
+                    incirclePoints = obj._calculateIncirclePoints()
 
                     # create center point
-                    incenterPointCoord = incenter_x, incenter_y
+                    incenterPointCoord = incirclePoints[0]
                     incenter = self._logic.createPoint(incenterPointCoord)
                     sheet = self._logic._getSheet()
                     sheet.addChild(incenter)
                     incenter._updateView()
 
                     # create tangent point
-                    tangentPointCoord = tangentPoint_x, tangentPoint_y
+                    tangentPointCoord = incirclePoints[1]
 
                     # get tangent point base side line
                     sideObjects = self._logic._getSheet()._getObjectsUnderMouse(True, True, tangentPointCoord)
@@ -428,17 +384,17 @@ class GeometryEditMode(BaseEditMode):
                     sheet = self._logic._getSheet()
                     sheet.addChild(tangent)
 
-                    # add tangent point to base side line childs
-                    line.addPoint(tangent, line._calculatePointRelPosition(render_engine.pos2dTo3dIsoPos(tangentPointCoord)))
-
                     tangent._updateView()
 
                     _selected = incenter, tangent
+
+                    obj._setIncenterPoints(_selected)
 
                     # draw incircle
                     self.active_object = self._logic.createCircle()
                     if self.active_object.makeBasedOnObjects(_selected):
                         self._logic._getSheet().addChild(self.active_object)
+                        obj._setIsIncircleDrawed(True)
                     else:
                         self.active_object.delete()
                     self.active_object = None
