@@ -921,6 +921,7 @@ class GeometryTriangle(suit.core.objects.ObjectDepth, GeometryAbstractObject):
         self.sides = []         # triangle sides
         self.isIncircleDrawed = False       #flag showing is incircle shown on objects sheet
         self.incirclePoints = []        #turple for incircle points
+        self.previousIncirclePtsCoordinates = [] # coordinates for incircle points at previous update
             
     def __del__(self):
         suit.core.objects.ObjectDepth.__del__(self)
@@ -989,11 +990,17 @@ class GeometryTriangle(suit.core.objects.ObjectDepth, GeometryAbstractObject):
 
         # update incircle points position
         if self.isIncircleDrawed:
-            incirclePointsCoordinats = self._calculateIncirclePoints()
-            incircle = self.incirclePoints[0]
-            tangent = self.incirclePoints[1]
-            incircle.setPosition(render_engine.pos2dTo3dIsoPos(incirclePointsCoordinats[0]))
-            tangent.setPosition(render_engine.pos2dTo3dIsoPos(incirclePointsCoordinats[1]))
+            if str(render_engine.pos3dTo2dWindow(self.incirclePoints[0].getPosition())[0]) == self.previousIncirclePtsCoordinates[0][0] \
+            and str(render_engine.pos3dTo2dWindow(self.incirclePoints[0].getPosition())[1]) == self.previousIncirclePtsCoordinates[0][1] \
+            and str(render_engine.pos3dTo2dWindow(self.incirclePoints[1].getPosition())[0]) == self.previousIncirclePtsCoordinates[1][0] \
+            and str(render_engine.pos3dTo2dWindow(self.incirclePoints[1].getPosition())[1]) == self.previousIncirclePtsCoordinates[1][1]:
+                incirclePointsCoordinats = self._calculateIncirclePoints()
+                incircle = self.incirclePoints[0]
+                tangent = self.incirclePoints[1]
+                incircle.setPosition(render_engine.pos2dTo3dIsoPos(incirclePointsCoordinats[0]))
+                tangent.setPosition(render_engine.pos2dTo3dIsoPos(incirclePointsCoordinats[1]))
+            else:
+                self.isIncircleDrawed = False
         
         suit.core.objects.ObjectDepth._update(self, _timeSinceLastFrame)
         
@@ -1181,6 +1188,8 @@ class GeometryTriangle(suit.core.objects.ObjectDepth, GeometryAbstractObject):
 
         # create tangent point
         tangentPointCoord = tangentPoint_x, tangentPoint_y
+
+        self.previousIncirclePtsCoordinates = [[str(incenterPointCoord[0]).split(".")[0], str(incenterPointCoord[1]).split(".")[0]], [str(tangentPointCoord[0]).split(".")[0], str(tangentPointCoord[1]).split(".")[0]]]
 
         return [incenterPointCoord, tangentPointCoord]
 
